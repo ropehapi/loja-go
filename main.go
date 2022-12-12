@@ -17,13 +17,12 @@ var (
 
 
 type Produto struct{
+	Id, Quantidade int
 	Nome, Descricao string
 	Preco float64
-	Quantidade int
 }
 
 func insertProduto(produto Produto) error{
-	fmt.Println("Chega até aqui")
 	_, err := db.Exec(fmt.Sprintf("INSERT INTO produto (nome, descricao, preco, quantidade) VALUES ('%s','%s',%f,%d)", produto.Nome, produto.Descricao, produto.Preco, produto.Quantidade))
 
 	if(err != nil){
@@ -35,15 +34,36 @@ func insertProduto(produto Produto) error{
 	return nil
 }
 
+func getProdutos() ([]*Produto, error){
+	res, err := db.Query("SELECT * FROM produto")
+
+	if err != nil {
+		return nil, err
+	}
+
+	produtos := []*Produto{}
+	for res.Next(){
+		var produto Produto
+		if err := res.Scan(&produto.Id ,&produto.Nome, &produto.Descricao, &produto.Preco, &produto.Quantidade); err != nil{
+			return nil, err
+		}
+
+		produtos = append(produtos, &produto)
+	}
+
+	return produtos, nil
+}
+
 func main(){
 
 	db, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/loja_go")
 
 	produto := Produto{
-		"Camiseta",
-		"Confortável",
+		4,
+		5,
+		"Bermuda",
+		"Da cyclone",
 		89.99,
-		15,
 	}
 
 	if inserterror := insertProduto(produto); inserterror != nil {
@@ -56,10 +76,9 @@ func main(){
 }
 
 func index(w http.ResponseWriter, r *http.Request){
-	produtos := []Produto{
-		{"Camiseta","Confortável",180,15},
-		{"Tênis","12 molas",180,15},
-		{"Boné","Boné lagum",180,15},
+	produtos, err := getProdutos()
+	if err != nil {
+		panic(err.Error())
 	}
 	
 	temp.ExecuteTemplate(w, "index", produtos)
